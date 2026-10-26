@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; scroll-padding-top: 5.5rem; }
+  body { @apply bg-ink font-sans text-bone antialiased; }
+  ::selection { background: #e11d2e; color: #fff; }
+  :focus-visible { outline: 2px solid #ff4a3d; outline-offset: 3px; border-radius: 6px; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+}
+
+@layer components {
+  .container-x { @apply mx-auto w-full max-w-6xl px-5 sm:px-8; }
+  .section { @apply py-24 sm:py-32; }
+  .glass { @apply border border-white/10 bg-white/[0.04] backdrop-blur-xl; }
+}
+
+/* Starfield (red stars drifting upward) */
+.stars-layer {
+  background: transparent;
+  animation: animStar linear infinite;
+  will-change: transform;
+}
+.stars-layer::after {
+  content: " ";
+  position: absolute;
+  top: 2000px;
+  width: inherit;
+  height: inherit;
+  background: transparent;
+  box-shadow: var(--shadow);
+}
+@keyframes animStar {
+  from { transform: translateY(0); }
+  to { transform: translateY(-2000px); }
+}
