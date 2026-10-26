@@ -385,7 +385,7 @@ export default function Hero() {
       ref={sectionRef}
       id="home"
       className="relative isolate flex min-h-[100svh] items-center overflow-hidden bg-ink pb-16 pt-24 sm:pt-28"
-      style={{ ["--spot" as string]: 0, ["--nx" as string]: 0, ["--ny" as string]: 0 }}
+      style={{ position: "relative", ["--spot" as string]: 0, ["--nx" as string]: 0, ["--ny" as string]: 0 }}
     >
       {/* ---------- background ---------- */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -573,7 +573,6 @@ export default function Hero() {
                     alt={alt}
                     width={640}
                     height={800}
-                    fetchPriority="high"
                     decoding="async"
                     draggable={false}
                     onError={handleImgError}
