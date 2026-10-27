@@ -1,948 +1,879 @@
-import { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
-const designs = Array.from({ length: 12 }, (_, i) => ({
-  src: `/images/Neeraj17%20(${i + 1}).jpeg`,
-  title: `Landing Page Design ${i + 1}`,
+/* ----------------------------- DATA ----------------------------- */
+
+const makeImages = (from, to, names) =>
+  names.slice(from - 1, to).map((name, i) => ({
+    src: `/images/Neeraj17%20(${from + i}).jpeg`,
+    alt: `Landing Page Design ${name}`,
+  }));
+
+const NAMES = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
+
+const topImages = makeImages(1, 6, NAMES);
+const bottomImages = makeImages(7, 12, NAMES);
+const allImages = [...topImages, ...bottomImages];
+
+const SPEEDS = [
+  { label: "0.5x", value: 0.5 },
+  { label: "1x", value: 1 },
+  { label: "2x", value: 2 },
+];
+
+// Kam particles + sirf transform/opacity animate hote hain (GPU par, lag nahi)
+const EMBERS = Array.from({ length: 8 }, (_, i) => ({
+  left: `${(i * 37 + 11) % 100}%`,
+  size: 3 + (i % 2),
+  delay: `-${(i * 2.6) % 14}s`,
+  duration: `${12 + (i % 4) * 3}s`,
 }));
 
-export default function LandingShowcase() {
-  const [active, setActive] = useState(0);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const current = designs[active];
+/* ---------------------------- SHARED ---------------------------- */
 
-  const select = (index: number) => {
-    setActive(index);
-    stageRef.current?.scrollTo({ top: 0, behavior: "instant" });
-  };
+const cx = (...parts) => parts.filter(Boolean).join(" ");
 
-  const step = (direction: number) =>
-    select((active + direction + designs.length) % designs.length);
+const FONT_DISPLAY =
+  "[font-family:'Bricolage_Grotesque','Avenir_Next',system-ui,-apple-system,'Segoe_UI',sans-serif]";
+const FONT_ACCENT = "[font-family:'Instrument_Serif','Iowan_Old_Style',Georgia,serif]";
+const FOCUS_RING =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[#ff6b79]";
+
+const ICON_BUTTON = cx(
+  "grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-full",
+  "sm:h-[42px] sm:w-[42px] md:h-11 md:w-11",
+  "border border-white/20 text-white",
+  "bg-[linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.03))]",
+  "transition-[transform,background-color,color,border-color] duration-300",
+  "ease-[cubic-bezier(0.22,1,0.36,1)]",
+  "hover:border-[rgba(255,77,94,0.8)] hover:bg-[rgba(225,29,46,0.22)] hover:text-[#ff8b96]",
+  "active:scale-[0.92]",
+  FOCUS_RING
+);
+
+const LIGHTS_IDLE = [
+  "bg-white/[0.28] group-hover/card:bg-[#ff4d5e] group-focus-within/card:bg-[#ff4d5e]",
+  "bg-white/[0.28] delay-[60ms] group-hover/card:bg-[#ff8b96] group-focus-within/card:bg-[#ff8b96]",
+  "bg-white/[0.28] delay-[120ms] group-hover/card:bg-[#b3141f] group-focus-within/card:bg-[#b3141f]",
+];
+const LIGHTS_LIT = ["bg-[#ff4d5e]", "bg-[#ff8b96]", "bg-[#b3141f]"];
+
+const reveal = (revealed) =>
+  cx(
+    "[transition:opacity_800ms_cubic-bezier(0.22,1,0.36,1),transform_800ms_cubic-bezier(0.22,1,0.36,1)]",
+    revealed ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0",
+    "motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none"
+  );
+
+/* ----------------------------- ICONS ---------------------------- */
+
+const iconProps = {
+  width: 18,
+  height: 18,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": true,
+  focusable: false,
+};
+
+const ExpandIcon = () => (
+  <svg {...iconProps}>
+    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+  </svg>
+);
+const CloseIcon = () => (
+  <svg {...iconProps}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+);
+const PrevIcon = () => (
+  <svg {...iconProps}>
+    <path d="m15 18-6-6 6-6" />
+  </svg>
+);
+const NextIcon = () => (
+  <svg {...iconProps}>
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+const PlayIcon = () => (
+  <svg {...iconProps} fill="currentColor" stroke="none">
+    <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
+  </svg>
+);
+const PauseIcon = () => (
+  <svg {...iconProps} fill="currentColor" stroke="none">
+    <rect x="6" y="5" width="4.5" height="14" rx="1.2" />
+    <rect x="13.5" y="5" width="4.5" height="14" rx="1.2" />
+  </svg>
+);
+
+/* --------------------------- BROWSER BAR ------------------------- */
+
+function BrowserBar({ label, lit = false, children }) {
+  const lights = lit ? LIGHTS_LIT : LIGHTS_IDLE;
 
   return (
-    <section
-      id="landing-pages"
-      aria-labelledby="landing-heading"
-      className="landing-showcase"
+    <span className="flex h-[29px] items-center gap-2 pl-1.5 pr-1 sm:h-[31px] sm:gap-[9px] md:h-[34px] md:gap-3">
+      <span className="flex shrink-0 gap-1 sm:gap-1.5">
+        {lights.map((tone, index) => (
+          <span
+            key={index}
+            className={cx(
+              "h-[7px] w-[7px] rounded-full transition-[background-color] duration-[350ms]",
+              "sm:h-2 sm:w-2 md:h-[9px] md:w-[9px]",
+              tone
+            )}
+          />
+        ))}
+      </span>
+
+      <span className="min-w-0 flex-1 truncate rounded-full bg-black/45 px-2.5 py-[5px] text-[10px] font-medium leading-[1.3] tracking-[0.01em] text-white/[0.84] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] sm:px-[11px] sm:text-[11px] md:px-3.5 md:py-1.5 md:text-xs">
+        {label}
+      </span>
+
+      {children}
+    </span>
+  );
+}
+
+/* --------------------------- GALLERY CARD ------------------------ */
+
+function GalleryCard({ item, interactive, reverse, onOpen }) {
+  const cardRef = useRef(null);
+  const frame = useRef(0);
+
+  const handleMove = useCallback((event) => {
+    if (event.pointerType !== "mouse") return;
+    const el = cardRef.current;
+    if (!el) return;
+
+    const { clientX, clientY } = event;
+    cancelAnimationFrame(frame.current);
+
+    frame.current = requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect();
+      const x = (clientX - rect.left) / rect.width;
+      const y = (clientY - rect.top) / rect.height;
+
+      el.style.setProperty("--mx", `${(x * 100).toFixed(1)}%`);
+      el.style.setProperty("--my", `${(y * 100).toFixed(1)}%`);
+      el.style.setProperty("--ry", `${((x - 0.5) * 7).toFixed(2)}deg`);
+      el.style.setProperty("--rx", `${((0.5 - y) * 5).toFixed(2)}deg`);
+    });
+  }, []);
+
+  const handleLeave = useCallback(() => {
+    cancelAnimationFrame(frame.current);
+    const el = cardRef.current;
+    if (!el) return;
+    el.style.setProperty("--rx", "0deg");
+    el.style.setProperty("--ry", "0deg");
+  }, []);
+
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+
+  return (
+    <figure
+      ref={cardRef}
+      onPointerMove={handleMove}
+      onPointerLeave={handleLeave}
+      className={cx(
+        "group/card relative m-0 w-[var(--card)] shrink-0 rounded-[18px] hover:z-[1]",
+        "sm:rounded-[20px] md:rounded-[22px] xl:rounded-[24px]",
+        "[--rx:0deg] [--ry:0deg] [--mx:50%] [--my:50%]",
+        // Tilt sirf hover par lagta hai; idle cards par transform nahi hota (kam GPU memory)
+        "hover:[transform:perspective(1100px)_rotateX(var(--rx))_rotateY(var(--ry))]",
+        "[transition:transform_450ms_cubic-bezier(0.22,1,0.36,1)]",
+        "motion-reduce:transform-none motion-reduce:transition-none motion-reduce:snap-center",
+        reverse
+          ? "odd:mt-2 sm:odd:mt-3 lg:odd:mt-4"
+          : "even:mt-2 sm:even:mt-3 lg:even:mt-4"
+      )}
     >
-      <div className="ls-glow ls-glow-one" aria-hidden="true" />
-      <div className="ls-glow ls-glow-two" aria-hidden="true" />
+      <button
+        type="button"
+        onClick={onOpen}
+        tabIndex={interactive ? 0 : -1}
+        aria-label={`Enlarge ${item.alt}`}
+        className={cx(
+          "relative block w-full cursor-zoom-in overflow-hidden rounded-[inherit] border-0",
+          "p-2 pb-2.5 sm:p-2.5 sm:pb-3 md:p-[11px] md:pb-3",
+          "text-left text-inherit [-webkit-tap-highlight-color:transparent]",
+          "[background:linear-gradient(160deg,rgba(255,255,255,0.12),rgba(255,255,255,0.02)_48%,rgba(225,29,46,0.1)),#0e0608]",
+          "shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_22px_40px_-26px_rgba(0,0,0,0.95)]",
+          "group-hover/card:shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_30px_50px_-24px_rgba(0,0,0,1),0_0_44px_-14px_rgba(225,29,46,0.7)]",
+          "before:pointer-events-none before:absolute before:inset-0 before:z-[2]",
+          "before:rounded-[inherit] before:p-px before:content-['']",
+          "before:[background:linear-gradient(150deg,rgba(255,255,255,0.5),rgba(255,255,255,0.05)_42%,rgba(225,29,46,0.7))]",
+          "before:[-webkit-mask:linear-gradient(#000_0_0)_content-box,linear-gradient(#000_0_0)]",
+          "before:[-webkit-mask-composite:xor]",
+          "before:[mask:linear-gradient(#000_0_0)_content-box_exclude,linear-gradient(#000_0_0)]",
+          "after:pointer-events-none after:absolute after:inset-0 after:z-[3]",
+          "after:rounded-[inherit] after:opacity-0 after:transition-opacity",
+          "after:duration-300 after:content-['']",
+          "after:[background:radial-gradient(300px_circle_at_var(--mx)_var(--my),rgba(255,90,105,0.22),transparent_62%)]",
+          "group-hover/card:after:opacity-100",
+          FOCUS_RING
+        )}
+      >
+        <BrowserBar label={item.alt}>
+          <span className="grid h-[24px] w-[24px] shrink-0 place-items-center rounded-full text-white/60 transition-[color,transform,background-color] duration-[250ms] group-hover/card:scale-[1.1] group-hover/card:bg-[rgba(225,29,46,0.3)] group-hover/card:text-[#ff8b96] group-focus-within/card:text-[#ff8b96] sm:h-[26px] sm:w-[26px] [&>svg]:h-3.5 [&>svg]:w-3.5">
+            <ExpandIcon />
+          </span>
+        </BrowserBar>
 
-      <div className="ls-container">
-        <header className="ls-header">
-          <div>
-            <div className="ls-eyebrow">
-              <span />
-              Designed To Convert
-            </div>
+        {/* Image apni natural height mein: width 100%, height auto, koi crop nahi */}
+        <span className="relative mt-1 block w-full overflow-hidden rounded-[10px] bg-black/60 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.09)] md:rounded-[13px]">
+          <img
+            src={item.src}
+            alt={interactive ? item.alt : ""}
+            loading="eager"
+            decoding="async"
+            draggable={false}
+            className="block h-auto w-full max-w-full select-none object-fill"
+          />
+        </span>
+      </button>
+    </figure>
+  );
+}
 
-            <h2 id="landing-heading">
-              Landing Pages That
-              <br className="ls-desktop-break" /> Turn Interest Into{" "}
-              <span>Enquiries.</span>
-            </h2>
+/* --------------------------- CAROUSEL ROW ------------------------ */
+
+function CarouselRow({ images, offset = 0, reverse = false, revealed, paused, onOpen }) {
+  const direction = reverse ? "Moves left to right." : "Moves right to left.";
+
+  return (
+    <div
+      tabIndex={0}
+      role="region"
+      aria-label={`Landing page gallery. ${direction} Focus to pause.`}
+      className={cx(
+        "group/row relative w-full min-w-0 overflow-hidden [contain:layout_paint]",
+        "py-3 sm:py-4 md:py-[18px] lg:py-5",
+        "[--gap:14px] [--card:70vw] min-[400px]:[--card:66vw]",
+        "sm:[--gap:18px] sm:[--card:46vw]",
+        "md:[--gap:20px] md:[--card:34vw]",
+        "lg:[--gap:24px] lg:[--card:26vw]",
+        "xl:[--gap:26px] xl:[--card:clamp(280px,21vw,340px)]",
+        "2xl:[--card:340px]",
+        reverse
+          ? "[transition:opacity_900ms_ease_680ms,transform_1200ms_cubic-bezier(0.22,1,0.36,1)_680ms]"
+          : "[transition:opacity_900ms_ease_500ms,transform_1200ms_cubic-bezier(0.22,1,0.36,1)_500ms]",
+        revealed
+          ? "translate-x-0 opacity-100"
+          : reverse
+          ? "-translate-x-[7vw] opacity-0"
+          : "translate-x-[7vw] opacity-0",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#ff6b79]",
+        "motion-reduce:translate-x-0 motion-reduce:overflow-x-auto motion-reduce:opacity-100",
+        "motion-reduce:transition-none motion-reduce:snap-x motion-reduce:snap-mandatory"
+      )}
+    >
+      {/* Edge fade: mask-image ki jagah simple overlay (animation ke saath mask bhaari hota hai) */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[7%] bg-gradient-to-r from-black/85 to-transparent motion-reduce:hidden"
+      />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-[7%] bg-gradient-to-l from-black/85 to-transparent motion-reduce:hidden"
+      />
+
+      <div
+        className={cx(
+          "cc-track flex w-max will-change-transform",
+          reverse
+            ? "animate-[cc-scroll_25s_linear_-18s_infinite_reverse] md:animate-[cc-scroll_30s_linear_-18s_infinite_reverse]"
+            : "animate-[cc-scroll_22s_linear_infinite] md:animate-[cc-scroll_27s_linear_infinite]",
+          paused && "[animation-play-state:paused]",
+          "group-hover/row:[animation-play-state:paused]",
+          "group-focus-within/row:[animation-play-state:paused]",
+          "group-active/row:[animation-play-state:paused]",
+          "motion-reduce:transform-none motion-reduce:animate-none motion-reduce:will-change-auto"
+        )}
+      >
+        {[0, 1].map((copy) => (
+          <div
+            key={copy}
+            aria-hidden={copy === 1 ? true : undefined}
+            className={cx(
+              "flex shrink-0 items-start gap-[var(--gap)] pr-[var(--gap)]",
+              "motion-reduce:pl-[var(--gap)]",
+              copy === 1 && "motion-reduce:hidden"
+            )}
+          >
+            {images.map((item, index) => (
+              <GalleryCard
+                key={`${copy}-${index}-${item.src}`}
+                item={item}
+                interactive={copy === 0}
+                reverse={reverse}
+                onOpen={() => onOpen(offset + index)}
+              />
+            ))}
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-          <div className="ls-intro">
-            <p>
-              Stop wasting ad spend on low conversion pages. Invest in a
-              high-converting automated funnel.
-            </p>
+/* ----------------------------- CONTROLS -------------------------- */
 
-            <div className="ls-collection">
-              <span className="ls-collection-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="3" width="7" height="7" rx="2" />
-                  <rect x="14" y="3" width="7" height="7" rx="2" />
-                  <rect x="3" y="14" width="7" height="7" rx="2" />
-                  <rect x="14" y="14" width="7" height="7" rx="2" />
-                </svg>
-              </span>
-              <span>12 Designs. Explore Every Detail.</span>
-            </div>
-          </div>
-        </header>
+function Controls({ playing, onToggle, speed, onSpeed, revealed }) {
+  return (
+    <div
+      style={{ transitionDelay: "300ms" }}
+      className={cx(
+        "mx-auto mb-3 flex w-full max-w-[1280px] flex-wrap items-center justify-between gap-3 px-5 sm:px-7 md:px-9 lg:px-12",
+        reveal(revealed)
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-pressed={!playing}
+          aria-label={playing ? "Pause gallery movement" : "Play gallery movement"}
+          className={cx(ICON_BUTTON, "[&>svg]:h-4 [&>svg]:w-4")}
+        >
+          {playing ? <PauseIcon /> : <PlayIcon />}
+        </button>
 
-        <div className="ls-workspace">
-          <div className="ls-main">
-            <div className="ls-preview">
-              <div className="ls-browser">
-                <div className="ls-browser-dots" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-
-                <div className="ls-address">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <rect x="5" y="10" width="14" height="11" rx="3" />
-                    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                  </svg>
-                  <span>{current.title}</span>
-                </div>
-
-                <span className="ls-preview-tag">Preview</span>
-              </div>
-
-              <div
-                ref={stageRef}
-                tabIndex={0}
-                aria-label={`${current.title}. Scroll inside this frame to see the full page.`}
-                className="ls-page ls-scroll"
-              >
-                <img
-                  key={current.src}
-                  src={current.src}
-                  alt={current.title}
-                  decoding="async"
-                  className="ls-page-image"
-                />
-              </div>
-            </div>
-
-            <div className="ls-preview-footer">
-              <div className="ls-current">
-                <span className="ls-current-number">
-                  {String(active + 1).padStart(2, "0")}
-                </span>
-
-                <div>
-                  <p aria-live="polite" aria-atomic="true">
-                    {current.title}
-                  </p>
-                  <span>Scroll inside to explore the full page</span>
-                </div>
-              </div>
-
-              <div className="ls-controls">
-                <button
-                  type="button"
-                  onClick={() => step(-1)}
-                  aria-label="Previous design"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="m14 7-5 5 5 5M9 12h11" />
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => step(1)}
-                  aria-label="Next design"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="m10 7 5 5-5 5M15 12H4" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <aside className="ls-library" aria-label="Design collection">
-            <div className="ls-library-header">
-              <div>
-                <span className="ls-small-label">The Collection</span>
-                <h3>Pick Your Inspiration</h3>
-              </div>
-              <span className="ls-count">12</span>
-            </div>
-
-            <div
-              className="ls-thumbnails ls-scroll"
-              role="group"
-              aria-label="Choose a design"
+        <div
+          role="group"
+          aria-label="Gallery speed"
+          className="flex items-center gap-1 rounded-full border border-white/15 bg-black/50 p-1"
+        >
+          {SPEEDS.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              onClick={() => onSpeed(s.value)}
+              aria-pressed={speed === s.value}
+              className={cx(
+                "min-w-[44px] cursor-pointer rounded-full border-0 px-3 py-1.5 text-xs font-semibold",
+                "transition-[background-color,color] duration-300",
+                speed === s.value
+                  ? "bg-[#e11d2e] text-white"
+                  : "bg-transparent text-white/65 hover:text-white",
+                FOCUS_RING
+              )}
             >
-              {designs.map((design, index) => {
-                const selected = index === active;
-
-                return (
-                  <button
-                    key={design.src}
-                    type="button"
-                    onClick={() => select(index)}
-                    aria-label={`Show ${design.title}`}
-                    aria-current={selected ? "true" : undefined}
-                    className={`ls-thumbnail ${
-                      selected ? "is-active" : ""
-                    }`}
-                  >
-                    <div className="ls-thumbnail-image">
-                      <img
-                        src={design.src}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        draggable={false}
-                      />
-
-                      <span className="ls-thumbnail-number">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-
-                      {selected && (
-                        <span className="ls-selected" aria-hidden="true">
-                          <svg viewBox="0 0 24 24" fill="none">
-                            <path d="m6 12 4 4 8-8" />
-                          </svg>
-                        </span>
-                      )}
-                    </div>
-
-                    <span className="ls-thumbnail-caption">
-                      Design {String(index + 1).padStart(2, "0")}
-                      <span aria-hidden="true">↗</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="ls-library-footer">
-              <span aria-hidden="true" />
-              Select a design to explore
-            </div>
-          </aside>
+              {s.label}
+            </button>
+          ))}
         </div>
       </div>
 
+      <p className="m-0 flex items-center gap-2 text-xs text-white/60 sm:text-[13px]">
+        <span
+          className={cx(
+            "h-2 w-2 rounded-full bg-[#e11d2e]",
+            playing && "animate-[cc-pulse_1.8s_ease-in-out_infinite] motion-reduce:animate-none"
+          )}
+        />
+        {allImages.length} designs. Hover to pause, click to enlarge.
+      </p>
+    </div>
+  );
+}
+
+/* ----------------------------- LIGHTBOX -------------------------- */
+
+function Lightbox({ images, index, onClose, onStep, onSelect }) {
+  const dialogRef = useRef(null);
+  const scrollRef = useRef(null);
+  const progressRef = useRef(null);
+  const touch = useRef(null);
+  const isOpen = index !== null;
+  const item = isOpen ? images[index] : null;
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) dialog.showModal();
+    if (!isOpen && dialog.open) dialog.close();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const root = document.documentElement;
+    const previous = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      root.style.overflow = previous;
+    };
+  }, [isOpen]);
+
+  // Design badalne par scroll aur progress bar reset
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    if (progressRef.current) progressRef.current.style.transform = "scaleX(0)";
+  }, [index]);
+
+  // Agle aur pichhle design ko pehle se load kar lo, taaki navigate karte hi turant dikhe
+  useEffect(() => {
+    if (index === null) return;
+    [1, -1].forEach((step) => {
+      const next = images[(index + step + images.length) % images.length];
+      const preload = new Image();
+      preload.decoding = "async";
+      preload.src = next.src;
+    });
+  }, [index, images]);
+
+  // Scroll progress: state nahi, seedha style (re-render nahi hota, smooth rehta hai)
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    const bar = progressRef.current;
+    if (!el || !bar) return;
+    const max = el.scrollHeight - el.clientHeight;
+    const ratio = max > 0 ? el.scrollTop / max : 1;
+    bar.style.transform = `scaleX(${Math.min(1, Math.max(0, ratio)).toFixed(3)})`;
+  }, []);
+
+  const handleKeyDown = (event) => {
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      onStep(1);
+    } else if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      onStep(-1);
+    }
+  };
+
+  // Mobile par left/right swipe se next/previous design
+  const handleTouchStart = (event) => {
+    const t = event.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  };
+
+  const handleTouchEnd = (event) => {
+    if (!touch.current) return;
+    const t = event.changedTouches[0];
+    const dx = t.clientX - touch.current.x;
+    const dy = t.clientY - touch.current.y;
+    touch.current = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      onStep(dx < 0 ? 1 : -1);
+    }
+  };
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-label="Landing page preview"
+      onClose={onClose}
+      onKeyDown={handleKeyDown}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      className={cx(
+        "fixed inset-0 m-0 h-full max-h-none w-full max-w-none",
+        "place-items-center border-0 bg-transparent",
+        "p-3 text-white sm:p-5 md:p-[clamp(12px,3vw,40px)]",
+        "open:grid open:animate-[cc-fade_250ms_ease_both]",
+        // backdrop-blur hata diya: bade images ke upar blur bahut lag karta hai
+        "backdrop:animate-[cc-fade_300ms_ease_both]",
+        "backdrop:[background:radial-gradient(ellipse_at_50%_20%,rgba(225,29,46,0.3),transparent_70%),rgba(4,2,3,0.95)]",
+        "motion-reduce:open:animate-none motion-reduce:backdrop:animate-none"
+      )}
+    >
+      {item && (
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="grid max-h-[94dvh] w-[min(1080px,100%)] animate-[cc-pop_450ms_cubic-bezier(0.22,1,0.36,1)_both] gap-2.5 rounded-[20px] border border-white/15 bg-[linear-gradient(150deg,#1d0c10,#0c0507)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_44px_90px_-30px_rgba(0,0,0,0.9),0_0_90px_-34px_rgba(225,29,46,0.7)] motion-reduce:animate-none sm:p-4 md:gap-3.5 md:rounded-[28px] md:p-[clamp(12px,1.8vw,20px)]"
+        >
+          <div className="flex items-center justify-between gap-4 px-1">
+            <span className="text-xs font-medium tracking-[0.02em] text-white/70 sm:text-sm">
+              {index + 1} of {images.length}
+            </span>
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close preview"
+              className={cx(ICON_BUTTON, "hover:rotate-90")}
+            >
+              <CloseIcon />
+            </button>
+          </div>
+
+          <div className="overflow-hidden rounded-[16px] bg-black/60 px-2 pb-2.5 pt-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.09)] md:rounded-[18px]">
+            <BrowserBar label={item.alt} lit />
+
+            {/* Scroll progress bar */}
+            <div className="mx-1 mt-1.5 h-[3px] overflow-hidden rounded-full bg-white/10">
+              <div
+                ref={progressRef}
+                className="h-full origin-left rounded-full bg-[#e11d2e] will-change-transform"
+                style={{ transform: "scaleX(0)" }}
+              />
+            </div>
+
+            {/* Image poori width par, natural height mein; andar scroll karke poora design dekho */}
+            <div
+              ref={scrollRef}
+              onScroll={handleScroll}
+              tabIndex={0}
+              role="region"
+              aria-label={`${item.alt}. Scroll to explore the full design.`}
+              className={cx(
+                "relative mt-1.5 overflow-y-auto overflow-x-hidden rounded-xl bg-black/60",
+                "max-h-[62dvh] sm:max-h-[66dvh] md:[max-height:calc(100dvh_-_300px)]",
+                "overscroll-contain [-webkit-overflow-scrolling:touch]",
+                "[scrollbar-width:thin] [scrollbar-color:#e11d2e_rgba(255,255,255,0.06)]",
+                "[&::-webkit-scrollbar]:w-1.5",
+                "[&::-webkit-scrollbar-track]:bg-white/5",
+                "[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#e11d2e]",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#ff6b79]"
+              )}
+            >
+              <img
+                key={item.src}
+                src={item.src}
+                alt={item.alt}
+                decoding="async"
+                className="block h-auto w-full max-w-full animate-[cc-swap_350ms_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 px-1 md:grid-cols-[minmax(0,1fr)_auto_auto] md:gap-x-6">
+            <p className="m-0 min-w-0 font-bold leading-[1.15] tracking-[-0.025em] [font-size:clamp(16px,2.2vw,28px)]">
+              {item.alt}
+            </p>
+
+            <div
+              role="group"
+              aria-label="Choose a design"
+              className="col-span-full row-start-2 flex items-center justify-self-center md:col-span-1 md:row-start-auto md:justify-self-auto"
+            >
+              {images.map((image, i) => (
+                <button
+                  key={image.src}
+                  type="button"
+                  aria-label={`Show ${image.alt}`}
+                  aria-current={i === index ? "true" : undefined}
+                  onClick={() => onSelect(i)}
+                  className={cx(
+                    "relative h-7 w-5 cursor-pointer border-0 bg-transparent p-0",
+                    FOCUS_RING,
+                    "before:absolute before:left-1/2 before:top-1/2 before:h-[7px]",
+                    "before:-translate-x-1/2 before:-translate-y-1/2 before:rounded-full before:content-['']",
+                    "before:transition-[width,background-color] before:duration-[400ms]",
+                    i === index
+                      ? "before:w-5 before:bg-[#e11d2e]"
+                      : "before:w-[7px] before:bg-white/35 hover:before:bg-white/75"
+                  )}
+                />
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => onStep(-1)}
+                aria-label="Previous design"
+                className={cx(ICON_BUTTON, "hover:-translate-x-[3px]")}
+              >
+                <PrevIcon />
+              </button>
+              <button
+                type="button"
+                onClick={() => onStep(1)}
+                aria-label="Next design"
+                className={cx(ICON_BUTTON, "hover:translate-x-[3px]")}
+              >
+                <NextIcon />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </dialog>
+  );
+}
+
+/* ------------------------------ MAIN ----------------------------- */
+
+export default function ImageCarousel() {
+  const sectionRef = useRef(null);
+  const glowRef = useRef(null);
+  const glowFrame = useRef(0);
+
+  const [inView, setInView] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(null);
+  const [playing, setPlaying] = useState(true);
+  const [speed, setSpeed] = useState(1);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return undefined;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      setRevealed(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setInView(entry.isIntersecting);
+        if (entry.isIntersecting) setRevealed(true);
+      },
+      { threshold: 0.12, rootMargin: "80px 0px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Speed badalne par animation jump nahi karti (playbackRate smooth hai)
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || typeof el.getAnimations !== "function") return;
+    el.querySelectorAll(".cc-track").forEach((track) => {
+      track.getAnimations().forEach((animation) => {
+        if (animation.animationName === "cc-scroll") {
+          animation.playbackRate = speed;
+        }
+      });
+    });
+  }, [speed, revealed]);
+
+  // Cursor glow: sirf transform badalta hai (GPU par chalta hai), mask ya gradient repaint nahi hota
+  const handleSectionMove = useCallback((event) => {
+    if (event.pointerType !== "mouse") return;
+    const section = sectionRef.current;
+    const glow = glowRef.current;
+    if (!section || !glow) return;
+
+    const { clientX, clientY } = event;
+    cancelAnimationFrame(glowFrame.current);
+
+    glowFrame.current = requestAnimationFrame(() => {
+      const rect = section.getBoundingClientRect();
+      glow.style.transform = `translate3d(${(clientX - rect.left).toFixed(0)}px, ${(
+        clientY - rect.top
+      ).toFixed(0)}px, 0)`;
+    });
+  }, []);
+
+  useEffect(() => () => cancelAnimationFrame(glowFrame.current), []);
+
+  const closePreview = useCallback(() => setActiveIndex(null), []);
+
+  const stepPreview = useCallback((direction) => {
+    setActiveIndex((current) =>
+      current === null ? current : (current + direction + allImages.length) % allImages.length
+    );
+  }, []);
+
+  const stagger = (i) => ({ transitionDelay: `${i * 110}ms` });
+  const bgPause = inView ? "" : "[animation-play-state:paused]";
+
+  return (
+    <section
+      ref={sectionRef}
+      aria-labelledby="cc-carousel-heading"
+      onPointerMove={handleSectionMove}
+      className={cx(
+        "group/sec relative isolate w-full min-w-0 overflow-hidden text-white",
+        FONT_DISPLAY,
+        "pb-12 pt-14 sm:pb-14 sm:pt-16 md:pb-16 md:pt-20 lg:pb-20 lg:pt-24 xl:pb-24 xl:pt-28",
+        "[background:radial-gradient(ellipse_60%_50%_at_0%_0%,rgba(225,29,46,0.24),transparent_65%),radial-gradient(ellipse_55%_45%_at_100%_100%,rgba(255,45,65,0.2),transparent_70%),linear-gradient(165deg,#050506_0%,#12070a_45%,#2a0a10_100%)]"
+      )}
+    >
+      {/* BACKGROUND (sab kuch GPU-friendly: static gradients + transform/opacity animation) */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+      >
+        {/* drifting red orbs: radial-gradient hain, blur filter nahi */}
+        <span
+          className={cx(
+            "absolute -bottom-[180px] right-[2%] h-[560px] w-[560px] rounded-full will-change-transform",
+            "[background:radial-gradient(circle,rgba(255,45,65,0.34),transparent_66%)]",
+            "animate-[cc-float_26s_ease-in-out_infinite_alternate] motion-reduce:animate-none",
+            bgPause
+          )}
+        />
+        <span
+          className={cx(
+            "absolute -left-[160px] top-[22%] h-[520px] w-[520px] rounded-full will-change-transform",
+            "[background:radial-gradient(circle,rgba(180,15,30,0.34),transparent_66%)]",
+            "animate-[cc-float-2_32s_ease-in-out_infinite_alternate] motion-reduce:animate-none",
+            bgPause
+          )}
+        />
+
+        {/* static grid */}
+        <span className="absolute inset-0 [-webkit-mask-image:linear-gradient(to_bottom,#000,transparent_85%)] [background-image:linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:linear-gradient(to_bottom,#000,transparent_85%)]" />
+
+        {/* cursor glow */}
+        <span
+          ref={glowRef}
+          className="absolute -left-[260px] -top-[260px] h-[520px] w-[520px] rounded-full opacity-0 transition-opacity duration-500 will-change-transform group-hover/sec:opacity-100 [background:radial-gradient(circle,rgba(225,29,46,0.26),transparent_65%)] motion-reduce:hidden"
+        />
+
+        {/* rising embers */}
+        {EMBERS.map((ember, i) => (
+          <span
+            key={i}
+            style={{
+              left: ember.left,
+              width: ember.size,
+              height: ember.size,
+              animationDelay: ember.delay,
+              animationDuration: ember.duration,
+            }}
+            className={cx(
+              "absolute bottom-0 rounded-full bg-[#ff6b79] opacity-0 will-change-transform",
+              "animate-[cc-ember_14s_linear_infinite] motion-reduce:hidden",
+              bgPause
+            )}
+          />
+        ))}
+
+        {/* top and bottom black fades */}
+        <span className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 to-transparent" />
+        <span className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/70 to-transparent" />
+      </div>
+
+      {/* HEADER */}
+      <header className="mx-auto mb-8 grid w-full max-w-[1280px] grid-cols-1 items-end gap-6 px-5 sm:mb-10 sm:px-7 md:mb-12 md:px-9 lg:mb-14 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-x-14 lg:px-12 xl:gap-x-20">
+        <div className="min-w-0 [container-type:inline-size]">
+          <span
+            style={stagger(0)}
+            className={cx(
+              "mb-4 inline-flex items-center gap-3 text-[13px] font-medium leading-[1.4] tracking-[0.02em] text-[#ffd0d5]",
+              "before:h-0.5 before:w-9 before:rounded-sm before:content-['']",
+              "before:[background:linear-gradient(90deg,#e11d2e,rgba(225,29,46,0))]",
+              "sm:text-sm md:mb-5 md:text-[15px]",
+              reveal(revealed)
+            )}
+          >
+            Our Creative Work
+          </span>
+
+          <h2
+            id="cc-carousel-heading"
+            style={stagger(1)}
+            className={cx(
+              "m-0 font-bold leading-[0.98] tracking-[-0.04em] text-white",
+              "[font-size:clamp(30px,min(10.4cqw,76px),76px)]",
+              "[font-variation-settings:'opsz'_96]",
+              reveal(revealed)
+            )}
+          >
+            <span className="block max-w-full whitespace-nowrap">Landing Pages That</span>
+
+            <span
+              className={cx(
+                "mt-[0.08em] block max-w-full whitespace-nowrap pb-[0.1em]",
+                "font-normal italic leading-[1.04] tracking-[-0.01em]",
+                FONT_ACCENT,
+                "[font-size:min(7.6cqw,0.74em)]",
+                "bg-clip-text text-transparent",
+                "bg-[linear-gradient(100deg,#c4121f_0%,#ff4d5e_32%,#ffd9dd_50%,#ff4d5e_68%,#c4121f_100%)]",
+                "[background-position:100%_0] [background-size:220%_100%]",
+                revealed && "animate-[cc-shimmer_2.8s_cubic-bezier(0.22,1,0.36,1)_0.6s_both]",
+                "motion-reduce:animate-none"
+              )}
+            >
+              Turn Interest Into Enquiries.
+            </span>
+          </h2>
+        </div>
+
+        <div
+          className={cx(
+            "relative min-w-0 pb-1 pt-5",
+            "before:absolute before:left-0 before:top-0 before:h-px before:w-[55%] before:max-w-[220px] before:content-['']",
+            "before:[background:linear-gradient(to_right,#e11d2e,rgba(225,29,46,0))]",
+            "lg:pl-8 lg:pt-0",
+            "lg:before:bottom-1 lg:before:top-1 lg:before:h-auto lg:before:w-px",
+            "lg:before:[background:linear-gradient(to_bottom,#e11d2e,rgba(225,29,46,0.05))]"
+          )}
+        >
+          <p
+            style={stagger(2)}
+            className={cx(
+              "m-0 max-w-[44ch] font-normal leading-[1.7] text-white/80",
+              "text-sm sm:text-[15px] md:text-base lg:text-[17px] xl:text-[18px]",
+              "[text-wrap:pretty]",
+              reveal(revealed)
+            )}
+          >
+            Stop Wasting Ad Spend on Low Conversion Pages. Invest in a High-Converting
+            Automated Funnel.
+          </p>
+        </div>
+      </header>
+
+      {/* CONTROLS */}
+      <Controls
+        playing={playing}
+        onToggle={() => setPlaying((p) => !p)}
+        speed={speed}
+        onSpeed={setSpeed}
+        revealed={revealed}
+      />
+
+      {/* CAROUSEL */}
+      <div className="grid w-full min-w-0 gap-1 sm:gap-2 lg:gap-1">
+        <CarouselRow
+          images={topImages}
+          offset={0}
+          revealed={revealed}
+          paused={!inView || !playing}
+          onOpen={setActiveIndex}
+        />
+        <CarouselRow
+          images={bottomImages}
+          offset={topImages.length}
+          reverse
+          revealed={revealed}
+          paused={!inView || !playing}
+          onOpen={setActiveIndex}
+        />
+      </div>
+
+      {/* LIGHTBOX */}
+      <Lightbox
+        images={allImages}
+        index={activeIndex}
+        onClose={closePreview}
+        onStep={stepPreview}
+        onSelect={setActiveIndex}
+      />
+
+      {/* FONTS + KEYFRAMES */}
       <style>{`
-        .landing-showcase {
-          --ls-red: #e11d2e;
-          --ls-muted: #929298;
-          position: relative;
-          isolation: isolate;
-          overflow: hidden;
-          padding: clamp(64px, 8vw, 112px) 0;
-          background: #070708;
-          color: #fff;
-          font-family: inherit;
-        }
-
-        .landing-showcase,
-        .landing-showcase * {
-          box-sizing: border-box;
-        }
-
-        .landing-showcase button {
-          font: inherit;
-          cursor: pointer;
-          -webkit-tap-highlight-color: transparent;
-        }
-
-        .landing-showcase svg {
-          stroke: currentColor;
-          stroke-width: 1.7;
-          stroke-linecap: round;
-          stroke-linejoin: round;
-        }
-
-        .landing-showcase button:focus-visible,
-        .landing-showcase [tabindex]:focus-visible {
-          outline: 2px solid #ff5362;
-          outline-offset: -3px;
-        }
-
-        .ls-glow {
-          position: absolute;
-          z-index: -1;
-          pointer-events: none;
-          border-radius: 50%;
-          filter: blur(90px);
-        }
-
-        .ls-glow-one {
-          width: 520px;
-          height: 520px;
-          top: -320px;
-          left: -160px;
-          background: rgba(225, 29, 46, .2);
-        }
-
-        .ls-glow-two {
-          width: 420px;
-          height: 420px;
-          right: -300px;
-          bottom: -200px;
-          background: rgba(225, 29, 46, .13);
-        }
-
-        .ls-container {
-          width: min(1360px, 100%);
-          margin-inline: auto;
-          padding-inline: clamp(20px, 4vw, 64px);
-        }
-
-        .ls-header {
-          display: grid;
-          grid-template-columns: minmax(0, 1.5fr) minmax(240px, .8fr);
-          gap: 48px;
-          align-items: end;
-          margin-bottom: 40px;
-        }
-
-        .ls-eyebrow {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 22px;
-          color: #d2d2d6;
-          font-size: 11px;
-          font-weight: 650;
-          letter-spacing: .16em;
-          text-transform: uppercase;
-        }
-
-        .ls-eyebrow > span {
-          width: 22px;
-          height: 3px;
-          border-radius: 4px;
-          background: var(--ls-red);
-          box-shadow: 0 0 18px rgba(225, 29, 46, .4);
-        }
-
-        .ls-header h2 {
-          margin: 0;
-          font-size: clamp(36px, 4.5vw, 62px);
-          font-weight: 750;
-          line-height: 1.09;
-          letter-spacing: -.055em;
-          text-wrap: balance;
-        }
-
-        .ls-header h2 > span {
-          color: #ff4353;
-          background: linear-gradient(100deg, #ff6b76, #e11d2e);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .ls-intro {
-          padding-bottom: 4px;
-        }
-
-        .ls-intro > p {
-          max-width: 36ch;
-          margin: 0;
-          color: #a6a6ae;
-          font-size: 15px;
-          line-height: 1.8;
-        }
-
-        .ls-collection {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-top: 20px;
-          color: #d3d3d8;
-          font-size: 11px;
-          font-weight: 550;
-        }
-
-        .ls-collection-icon {
-          display: grid;
-          width: 32px;
-          height: 32px;
-          flex-shrink: 0;
-          place-items: center;
-          border: 1px solid rgba(225, 29, 46, .25);
-          border-radius: 10px;
-          background: rgba(225, 29, 46, .09);
-          color: #ff6572;
-        }
-
-        .ls-collection-icon svg {
-          width: 16px;
-          height: 16px;
-        }
-
-        .ls-workspace {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) 292px;
-          gap: 20px;
-          align-items: start;
-        }
-
-        .ls-main,
-        .ls-library {
-          min-width: 0;
-        }
-
-        .ls-preview {
-          overflow: hidden;
-          padding: 7px;
-          border: 1px solid rgba(255, 255, 255, .13);
-          border-radius: 21px;
-          background: linear-gradient(
-            140deg,
-            rgba(255, 255, 255, .09),
-            rgba(255, 255, 255, .025) 45%,
-            rgba(225, 29, 46, .055)
-          );
-          box-shadow:
-            0 28px 70px rgba(0, 0, 0, .3),
-            0 1px 0 rgba(255, 255, 255, .04) inset;
-        }
-
-        .ls-browser {
-          display: flex;
-          align-items: center;
-          gap: 18px;
-          min-height: 49px;
-          padding: 5px 12px 11px;
-        }
-
-        .ls-browser-dots {
-          display: flex;
-          gap: 5px;
-          flex-shrink: 0;
-        }
-
-        .ls-browser-dots span {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: #424247;
-        }
-
-        .ls-browser-dots span:first-child {
-          background: var(--ls-red);
-        }
-
-        .ls-address {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 7px;
-          min-width: 0;
-          max-width: 340px;
-          flex: 1;
-          margin-inline: auto;
-          padding: 8px 12px;
-          border: 1px solid rgba(255, 255, 255, .04);
-          border-radius: 8px;
-          background: rgba(0, 0, 0, .25);
-          color: #aaaab2;
-          font-size: 10px;
-        }
-
-        .ls-address span {
-          overflow: hidden;
-          white-space: nowrap;
-          text-overflow: ellipsis;
-        }
-
-        .ls-address svg {
-          width: 11px;
-          height: 11px;
-          flex-shrink: 0;
-          color: #74747d;
-        }
-
-        .ls-preview-tag {
-          color: #83838d;
-          font-size: 9px;
-          letter-spacing: .1em;
-          text-transform: uppercase;
-        }
-
-        .ls-page {
-          height: clamp(420px, 66vh, 780px);
-          overflow-y: auto;
-          overflow-x: hidden;
-          overscroll-behavior-y: contain;
-          border: 1px solid rgba(255, 255, 255, .07);
-          border-radius: 12px;
-          background: #161618;
-        }
-
-        .ls-page-image {
-          display: block;
-          width: 100%;
-          height: auto;
-        }
-
-        .ls-preview-footer {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-          padding: 20px 3px 0;
-        }
-
-        .ls-current {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          min-width: 0;
-        }
-
-        .ls-current-number {
-          display: grid;
-          width: 44px;
-          height: 44px;
-          flex-shrink: 0;
-          place-items: center;
-          border: 1px solid rgba(225, 29, 46, .23);
-          border-radius: 13px;
-          background: rgba(225, 29, 46, .08);
-          color: #ff6471;
-          font-size: 14px;
-          font-weight: 700;
-          font-variant-numeric: tabular-nums;
-        }
-
-        .ls-current p {
-          margin: 0 0 5px;
-          color: #ededf0;
-          font-size: 13px;
-          font-weight: 600;
-        }
-
-        .ls-current div > span {
-          display: block;
-          color: #81818b;
-          font-size: 10px;
-          line-height: 1.5;
-        }
-
-        .ls-controls {
-          display: flex;
-          gap: 8px;
-          flex-shrink: 0;
-        }
-
-        .ls-controls button {
-          display: grid;
-          width: 44px;
-          height: 44px;
-          place-items: center;
-          border: 1px solid rgba(255, 255, 255, .13);
-          border-radius: 13px;
-          background: rgba(255, 255, 255, .035);
-          color: #fff;
-          transition: background .2s ease, border-color .2s ease;
-        }
-
-        .ls-controls button:last-child {
-          border-color: rgba(225, 29, 46, .65);
-          background: var(--ls-red);
-          box-shadow: 0 6px 22px rgba(225, 29, 46, .15);
-        }
-
-        .ls-controls svg {
-          width: 20px;
-          height: 20px;
-        }
-
-        .ls-library {
-          overflow: hidden;
-          border: 1px solid rgba(255, 255, 255, .09);
-          border-radius: 20px;
-          background: linear-gradient(
-            150deg,
-            rgba(255, 255, 255, .055),
-            rgba(255, 255, 255, .018)
-          );
-          backdrop-filter: blur(18px);
-          -webkit-backdrop-filter: blur(18px);
-        }
-
-        .ls-library-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          padding: 22px 18px 18px;
-        }
-
-        .ls-small-label {
-          display: block;
-          margin-bottom: 8px;
-          color: #85858e;
-          font-size: 9px;
-          font-weight: 600;
-          letter-spacing: .14em;
-          text-transform: uppercase;
-        }
-
-        .ls-library-header h3 {
-          margin: 0;
-          font-size: 14px;
-          font-weight: 600;
-          letter-spacing: -.025em;
-        }
-
-        .ls-count {
-          display: grid;
-          width: 29px;
-          height: 29px;
-          flex-shrink: 0;
-          place-items: center;
-          border: 1px solid rgba(255, 255, 255, .09);
-          border-radius: 9px;
-          color: #b5b5be;
-          font-size: 10px;
-        }
-
-        .ls-thumbnails {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 12px;
-          max-height: clamp(374px, calc(66vh - 46px), 734px);
-          overflow-y: auto;
-          padding: 3px 14px 14px;
-        }
-
-        .ls-thumbnail {
-          min-width: 0;
-          padding: 5px;
-          border: 1px solid rgba(255, 255, 255, .07);
-          border-radius: 12px;
-          background: rgba(0, 0, 0, .2);
-          text-align: left;
-          color: #92929b;
-          transition:
-            border-color .22s ease,
-            background .22s ease,
-            color .22s ease;
-        }
-
-        .ls-thumbnail.is-active {
-          border-color: var(--ls-red);
-          background: rgba(225, 29, 46, .1);
-          color: #fff;
-          box-shadow: 0 0 20px rgba(225, 29, 46, .08);
-        }
-
-        .ls-thumbnail-image {
-          position: relative;
-          overflow: hidden;
-          height: 124px;
-          border-radius: 7px;
-          background: #1a1a1d;
-        }
-
-        .ls-thumbnail-image::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          background: linear-gradient(
-            180deg,
-            rgba(0, 0, 0, .14),
-            transparent 45%,
-            rgba(0, 0, 0, .3)
-          );
-        }
-
-        .ls-thumbnail-image > img {
-          display: block;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          object-position: top;
-          opacity: .75;
-          transition: opacity .22s ease;
-        }
-
-        .ls-thumbnail.is-active img {
-          opacity: 1;
-        }
-
-        .ls-thumbnail-number {
-          position: absolute;
-          z-index: 1;
-          top: 7px;
-          left: 7px;
-          padding: 4px 6px;
-          border: 1px solid rgba(255, 255, 255, .13);
-          border-radius: 5px;
-          background: rgba(0, 0, 0, .7);
-          color: #fff;
-          font-size: 9px;
-          font-variant-numeric: tabular-nums;
-        }
-
-        .ls-selected {
-          position: absolute;
-          z-index: 1;
-          right: 7px;
-          bottom: 7px;
-          display: grid;
-          width: 23px;
-          height: 23px;
-          place-items: center;
-          border-radius: 50%;
-          background: var(--ls-red);
-          color: white;
-        }
-
-        .ls-selected svg {
-          width: 14px;
-          height: 14px;
-          stroke-width: 2.2;
-        }
-
-        .ls-thumbnail-caption {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 5px;
-          padding: 10px 3px 5px;
-          font-size: 10px;
-          font-weight: 550;
-        }
-
-        .ls-thumbnail-caption > span {
-          font-size: 13px;
-          color: #777780;
-        }
-
-        .ls-thumbnail.is-active .ls-thumbnail-caption > span {
-          color: #ff6572;
-        }
-
-        .ls-library-footer {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 7px;
-          padding: 15px 12px;
-          border-top: 1px solid rgba(255, 255, 255, .06);
-          color: #85858f;
-          font-size: 10px;
-        }
-
-        .ls-library-footer > span {
-          width: 5px;
-          height: 5px;
-          border-radius: 50%;
-          background: var(--ls-red);
-        }
-
-        .ls-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: #743039 #111113;
-        }
-
-        .ls-scroll::-webkit-scrollbar {
-          width: 5px;
-          height: 5px;
-        }
-
-        .ls-scroll::-webkit-scrollbar-track {
-          background: #111113;
-        }
-
-        .ls-scroll::-webkit-scrollbar-thumb {
-          border-radius: 10px;
-          background: #743039;
-        }
-
-        @media (hover: hover) {
-          .ls-controls button:hover {
-            border-color: var(--ls-red);
-            background: #c81929;
-          }
-
-          .ls-thumbnail:hover {
-            border-color: rgba(225, 29, 46, .65);
-            background: rgba(225, 29, 46, .07);
-            color: #fff;
-          }
-
-          .ls-thumbnail:hover img {
-            opacity: 1;
-          }
-        }
-
-        @media (max-width: 1050px) {
-          .ls-header {
-            grid-template-columns: minmax(0, 1fr);
-            gap: 22px;
-          }
-
-          .ls-intro > p {
-            max-width: 60ch;
-          }
-
-          .ls-collection {
-            margin-top: 14px;
-          }
-
-          .ls-workspace {
-            grid-template-columns: minmax(0, 1fr) 240px;
-            gap: 16px;
-          }
-
-          .ls-library-header {
-            padding-inline: 14px;
-          }
-
-          .ls-library-header h3 {
-            font-size: 12px;
-          }
-
-          .ls-thumbnails {
-            gap: 9px;
-            padding-inline: 10px;
-          }
-
-          .ls-thumbnail-image {
-            height: 110px;
-          }
-        }
-
-        @media (max-width: 760px) {
-          .ls-header {
-            gap: 18px;
-            margin-bottom: 28px;
-          }
-
-          .ls-header h2 {
-            max-width: 620px;
-            font-size: clamp(35px, 6.7vw, 49px);
-          }
-
-          .ls-intro > p {
-            font-size: 14px;
-            line-height: 1.75;
-          }
-
-          .ls-workspace {
-            grid-template-columns: minmax(0, 1fr);
-            gap: 26px;
-          }
-
-          .ls-preview {
-            padding: 5px;
-            border-radius: 17px;
-          }
-
-          .ls-browser {
-            gap: 12px;
-            min-height: 44px;
-            padding: 5px 9px 9px;
-          }
-
-          .ls-page {
-            height: clamp(350px, 61vh, 620px);
-            height: clamp(350px, 61svh, 620px);
-            border-radius: 10px;
-          }
-
-          .ls-library {
-            border-radius: 17px;
-          }
-
-          .ls-library-header {
-            padding: 18px 16px 15px;
-          }
-
-          .ls-library-header h3 {
-            font-size: 14px;
-          }
-
-          .ls-thumbnails {
-            display: flex;
-            gap: 11px;
-            max-height: none;
-            overflow-x: auto;
-            overflow-y: hidden;
-            padding: 3px 16px 16px;
-            scroll-snap-type: x proximity;
-            scroll-padding-inline: 16px;
-          }
-
-          .ls-thumbnail {
-            width: 116px;
-            flex: 0 0 116px;
-            scroll-snap-align: start;
-          }
-
-          .ls-thumbnail-image {
-            height: 132px;
-          }
-
-          .ls-library-footer {
-            padding-block: 12px;
-          }
-        }
-
-        @media (max-width: 420px) {
-          .ls-desktop-break {
-            display: none;
-          }
-
-          .ls-eyebrow {
-            margin-bottom: 17px;
-            font-size: 10px;
-          }
-
-          .ls-header h2 {
-            font-size: clamp(32px, 9vw, 37px);
-            line-height: 1.12;
-          }
-
-          .ls-preview-tag {
-            display: none;
-          }
-
-          .ls-address {
-            font-size: 9px;
-          }
-
-          .ls-preview-footer {
-            align-items: flex-start;
-            gap: 10px;
-            padding-top: 15px;
-          }
-
-          .ls-current {
-            gap: 8px;
-          }
-
-          .ls-current-number {
-            width: 35px;
-            height: 39px;
-            border-radius: 10px;
-            font-size: 12px;
-          }
-
-          .ls-current p {
-            font-size: 11px;
-            line-height: 1.4;
-          }
-
-          .ls-current div > span {
-            max-width: 145px;
-            font-size: 10px;
-          }
-
-          .ls-controls {
-            gap: 6px;
-          }
-
-          .ls-controls button {
-            width: 44px;
-            height: 44px;
-            border-radius: 11px;
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .landing-showcase *,
-          .landing-showcase *::before,
-          .landing-showcase *::after {
-            transition: none !important;
-            animation: none !important;
-            scroll-behavior: auto !important;
-          }
-        }
+        @import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&family=Instrument+Serif:ital@1&display=swap");
+
+        @keyframes cc-scroll { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
+        @keyframes cc-float { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-60px,-40px,0) scale(1.12); } }
+        @keyframes cc-float-2 { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(90px,50px,0) scale(1.15); } }
+        @keyframes cc-ember {
+          0% { transform: translate3d(0,0,0) scale(1); opacity: 0; }
+          10% { opacity: .9; }
+          100% { transform: translate3d(36px,-80vh,0) scale(.3); opacity: 0; }
+        }
+        @keyframes cc-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.7); } }
+        @keyframes cc-shimmer { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+        @keyframes cc-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes cc-pop { from { opacity: 0; transform: translateY(18px) scale(0.96); } to { opacity: 1; transform: none; } }
+        @keyframes cc-swap { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
     </section>
   );
