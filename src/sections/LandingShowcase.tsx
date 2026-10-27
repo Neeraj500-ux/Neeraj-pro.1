@@ -1,14 +1,84 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent,
+  PointerEvent,
+  ReactNode,
+  SVGProps,
+  TouchEvent,
+} from "react";
+
+/* ----------------------------- TYPES ----------------------------- */
+
+type PortfolioImage = {
+  src: string;
+  alt: string;
+};
+
+type BrowserBarProps = {
+  label: string;
+  lit?: boolean;
+  children?: ReactNode;
+};
+
+type GalleryCardProps = {
+  item: PortfolioImage;
+  interactive: boolean;
+  reverse: boolean;
+  onOpen: () => void;
+};
+
+type CarouselRowProps = {
+  images: readonly PortfolioImage[];
+  offset?: number;
+  reverse?: boolean;
+  revealed: boolean;
+  paused: boolean;
+  onOpen: (index: number) => void;
+};
+
+type ControlsProps = {
+  playing: boolean;
+  onToggle: () => void;
+  speed: number;
+  onSpeed: (value: number) => void;
+  revealed: boolean;
+};
+
+type LightboxProps = {
+  images: readonly PortfolioImage[];
+  index: number | null;
+  onClose: () => void;
+  onStep: (direction: number) => void;
+  onSelect: (index: number) => void;
+};
 
 /* ----------------------------- DATA ----------------------------- */
 
-const makeImages = (from, to, names) =>
+const NAMES = [
+  "One",
+  "Two",
+  "Three",
+  "Four",
+  "Five",
+  "Six",
+  "Seven",
+  "Eight",
+  "Nine",
+  "Ten",
+  "Eleven",
+  "Twelve",
+];
+
+const makeImages = (
+  from: number,
+  to: number,
+  names: readonly string[]
+): PortfolioImage[] =>
   names.slice(from - 1, to).map((name, i) => ({
     src: `/images/Neeraj17%20(${from + i}).jpeg`,
-    alt: `Landing Page Design ${name}`,
+    alt: `Portfolio Project ${name}`,
   }));
-
-const NAMES = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
 
 const topImages = makeImages(1, 6, NAMES);
 const bottomImages = makeImages(7, 12, NAMES);
@@ -20,7 +90,6 @@ const SPEEDS = [
   { label: "2x", value: 2 },
 ];
 
-// Kam particles + sirf transform/opacity animate hote hain (GPU par, lag nahi)
 const EMBERS = Array.from({ length: 8 }, (_, i) => ({
   left: `${(i * 37 + 11) % 100}%`,
   size: 3 + (i % 2),
@@ -30,11 +99,15 @@ const EMBERS = Array.from({ length: 8 }, (_, i) => ({
 
 /* ---------------------------- SHARED ---------------------------- */
 
-const cx = (...parts) => parts.filter(Boolean).join(" ");
+const cx = (...parts: Array<string | false | null | undefined>): string =>
+  parts.filter(Boolean).join(" ");
 
 const FONT_DISPLAY =
   "[font-family:'Bricolage_Grotesque','Avenir_Next',system-ui,-apple-system,'Segoe_UI',sans-serif]";
-const FONT_ACCENT = "[font-family:'Instrument_Serif','Iowan_Old_Style',Georgia,serif]";
+
+const FONT_ACCENT =
+  "[font-family:'Instrument_Serif','Iowan_Old_Style',Georgia,serif]";
+
 const FOCUS_RING =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[#ff6b79]";
 
@@ -55,9 +128,10 @@ const LIGHTS_IDLE = [
   "bg-white/[0.28] delay-[60ms] group-hover/card:bg-[#ff8b96] group-focus-within/card:bg-[#ff8b96]",
   "bg-white/[0.28] delay-[120ms] group-hover/card:bg-[#b3141f] group-focus-within/card:bg-[#b3141f]",
 ];
+
 const LIGHTS_LIT = ["bg-[#ff4d5e]", "bg-[#ff8b96]", "bg-[#b3141f]"];
 
-const reveal = (revealed) =>
+const reveal = (revealed: boolean): string =>
   cx(
     "[transition:opacity_800ms_cubic-bezier(0.22,1,0.36,1),transform_800ms_cubic-bezier(0.22,1,0.36,1)]",
     revealed ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0",
@@ -66,7 +140,7 @@ const reveal = (revealed) =>
 
 /* ----------------------------- ICONS ---------------------------- */
 
-const iconProps = {
+const iconProps: SVGProps<SVGSVGElement> = {
   width: 18,
   height: 18,
   viewBox: "0 0 24 24",
@@ -84,26 +158,31 @@ const ExpandIcon = () => (
     <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
   </svg>
 );
+
 const CloseIcon = () => (
   <svg {...iconProps}>
     <path d="M18 6 6 18M6 6l12 12" />
   </svg>
 );
+
 const PrevIcon = () => (
   <svg {...iconProps}>
     <path d="m15 18-6-6 6-6" />
   </svg>
 );
+
 const NextIcon = () => (
   <svg {...iconProps}>
     <path d="m9 18 6-6-6-6" />
   </svg>
 );
+
 const PlayIcon = () => (
   <svg {...iconProps} fill="currentColor" stroke="none">
     <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
   </svg>
 );
+
 const PauseIcon = () => (
   <svg {...iconProps} fill="currentColor" stroke="none">
     <rect x="6" y="5" width="4.5" height="14" rx="1.2" />
@@ -113,7 +192,11 @@ const PauseIcon = () => (
 
 /* --------------------------- BROWSER BAR ------------------------- */
 
-function BrowserBar({ label, lit = false, children }) {
+function BrowserBar({
+  label,
+  lit = false,
+  children,
+}: BrowserBarProps) {
   const lights = lit ? LIGHTS_LIT : LIGHTS_IDLE;
 
   return (
@@ -142,12 +225,18 @@ function BrowserBar({ label, lit = false, children }) {
 
 /* --------------------------- GALLERY CARD ------------------------ */
 
-function GalleryCard({ item, interactive, reverse, onOpen }) {
-  const cardRef = useRef(null);
-  const frame = useRef(0);
+function GalleryCard({
+  item,
+  interactive,
+  reverse,
+  onOpen,
+}: GalleryCardProps) {
+  const cardRef = useRef<HTMLElement | null>(null);
+  const frame = useRef<number>(0);
 
-  const handleMove = useCallback((event) => {
+  const handleMove = useCallback((event: PointerEvent<HTMLElement>) => {
     if (event.pointerType !== "mouse") return;
+
     const el = cardRef.current;
     if (!el) return;
 
@@ -156,6 +245,8 @@ function GalleryCard({ item, interactive, reverse, onOpen }) {
 
     frame.current = requestAnimationFrame(() => {
       const rect = el.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
       const x = (clientX - rect.left) / rect.width;
       const y = (clientY - rect.top) / rect.height;
 
@@ -168,13 +259,17 @@ function GalleryCard({ item, interactive, reverse, onOpen }) {
 
   const handleLeave = useCallback(() => {
     cancelAnimationFrame(frame.current);
+
     const el = cardRef.current;
     if (!el) return;
+
     el.style.setProperty("--rx", "0deg");
     el.style.setProperty("--ry", "0deg");
   }, []);
 
-  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+  useEffect(() => {
+    return () => cancelAnimationFrame(frame.current);
+  }, []);
 
   return (
     <figure
@@ -185,7 +280,6 @@ function GalleryCard({ item, interactive, reverse, onOpen }) {
         "group/card relative m-0 w-[var(--card)] shrink-0 rounded-[18px] hover:z-[1]",
         "sm:rounded-[20px] md:rounded-[22px] xl:rounded-[24px]",
         "[--rx:0deg] [--ry:0deg] [--mx:50%] [--my:50%]",
-        // Tilt sirf hover par lagta hai; idle cards par transform nahi hota (kam GPU memory)
         "hover:[transform:perspective(1100px)_rotateX(var(--rx))_rotateY(var(--ry))]",
         "[transition:transform_450ms_cubic-bezier(0.22,1,0.36,1)]",
         "motion-reduce:transform-none motion-reduce:transition-none motion-reduce:snap-center",
@@ -198,7 +292,7 @@ function GalleryCard({ item, interactive, reverse, onOpen }) {
         type="button"
         onClick={onOpen}
         tabIndex={interactive ? 0 : -1}
-        aria-label={`Enlarge ${item.alt}`}
+        aria-label={`Explore ${item.alt}`}
         className={cx(
           "relative block w-full cursor-zoom-in overflow-hidden rounded-[inherit] border-0",
           "p-2 pb-2.5 sm:p-2.5 sm:pb-3 md:p-[11px] md:pb-3",
@@ -226,7 +320,7 @@ function GalleryCard({ item, interactive, reverse, onOpen }) {
           </span>
         </BrowserBar>
 
-        {/* Image apni natural height mein: width 100%, height auto, koi crop nahi */}
+        {/* Full image at its natural aspect ratio. */}
         <span className="relative mt-1 block w-full overflow-hidden rounded-[10px] bg-black/60 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.09)] md:rounded-[13px]">
           <img
             src={item.src}
@@ -244,14 +338,23 @@ function GalleryCard({ item, interactive, reverse, onOpen }) {
 
 /* --------------------------- CAROUSEL ROW ------------------------ */
 
-function CarouselRow({ images, offset = 0, reverse = false, revealed, paused, onOpen }) {
-  const direction = reverse ? "Moves left to right." : "Moves right to left.";
+function CarouselRow({
+  images,
+  offset = 0,
+  reverse = false,
+  revealed,
+  paused,
+  onOpen,
+}: CarouselRowProps) {
+  const direction = reverse
+    ? "Moves left to right."
+    : "Moves right to left.";
 
   return (
     <div
       tabIndex={0}
       role="region"
-      aria-label={`Landing page gallery. ${direction} Focus to pause.`}
+      aria-label={`Portfolio project gallery. ${direction} Focus to pause.`}
       className={cx(
         "group/row relative w-full min-w-0 overflow-hidden [contain:layout_paint]",
         "py-3 sm:py-4 md:py-[18px] lg:py-5",
@@ -267,18 +370,18 @@ function CarouselRow({ images, offset = 0, reverse = false, revealed, paused, on
         revealed
           ? "translate-x-0 opacity-100"
           : reverse
-          ? "-translate-x-[7vw] opacity-0"
-          : "translate-x-[7vw] opacity-0",
+            ? "-translate-x-[7vw] opacity-0"
+            : "translate-x-[7vw] opacity-0",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#ff6b79]",
         "motion-reduce:translate-x-0 motion-reduce:overflow-x-auto motion-reduce:opacity-100",
         "motion-reduce:transition-none motion-reduce:snap-x motion-reduce:snap-mandatory"
       )}
     >
-      {/* Edge fade: mask-image ki jagah simple overlay (animation ke saath mask bhaari hota hai) */}
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[7%] bg-gradient-to-r from-black/85 to-transparent motion-reduce:hidden"
       />
+
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 right-0 z-10 w-[7%] bg-gradient-to-l from-black/85 to-transparent motion-reduce:hidden"
@@ -325,7 +428,13 @@ function CarouselRow({ images, offset = 0, reverse = false, revealed, paused, on
 
 /* ----------------------------- CONTROLS -------------------------- */
 
-function Controls({ playing, onToggle, speed, onSpeed, revealed }) {
+function Controls({
+  playing,
+  onToggle,
+  speed,
+  onSpeed,
+  revealed,
+}: ControlsProps) {
   return (
     <div
       style={{ transitionDelay: "300ms" }}
@@ -339,7 +448,9 @@ function Controls({ playing, onToggle, speed, onSpeed, revealed }) {
           type="button"
           onClick={onToggle}
           aria-pressed={!playing}
-          aria-label={playing ? "Pause gallery movement" : "Play gallery movement"}
+          aria-label={
+            playing ? "Pause gallery movement" : "Play gallery movement"
+          }
           className={cx(ICON_BUTTON, "[&>svg]:h-4 [&>svg]:w-4")}
         >
           {playing ? <PauseIcon /> : <PlayIcon />}
@@ -371,14 +482,19 @@ function Controls({ playing, onToggle, speed, onSpeed, revealed }) {
         </div>
       </div>
 
-      <p className="m-0 flex items-center gap-2 text-xs text-white/60 sm:text-[13px]">
+      <p className="m-0 flex min-w-0 items-center gap-2 text-xs leading-relaxed text-white/60 sm:text-[13px]">
         <span
+          aria-hidden="true"
           className={cx(
-            "h-2 w-2 rounded-full bg-[#e11d2e]",
-            playing && "animate-[cc-pulse_1.8s_ease-in-out_infinite] motion-reduce:animate-none"
+            "h-2 w-2 shrink-0 rounded-full bg-[#e11d2e]",
+            playing &&
+              "animate-[cc-pulse_1.8s_ease-in-out_infinite] motion-reduce:animate-none"
           )}
         />
-        {allImages.length} designs. Hover to pause, click to enlarge.
+
+        <span>
+          {allImages.length} Projects. Hover To Pause, Click To Explore.
+        </span>
       </p>
     </div>
   );
@@ -386,59 +502,85 @@ function Controls({ playing, onToggle, speed, onSpeed, revealed }) {
 
 /* ----------------------------- LIGHTBOX -------------------------- */
 
-function Lightbox({ images, index, onClose, onStep, onSelect }) {
-  const dialogRef = useRef(null);
-  const scrollRef = useRef(null);
-  const progressRef = useRef(null);
-  const touch = useRef(null);
+function Lightbox({
+  images,
+  index,
+  onClose,
+  onStep,
+  onSelect,
+}: LightboxProps) {
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const progressRef = useRef<HTMLDivElement | null>(null);
+  const touch = useRef<{ x: number; y: number } | null>(null);
+
   const isOpen = index !== null;
-  const item = isOpen ? images[index] : null;
+  const item = index !== null ? images[index] : undefined;
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
+
     if (isOpen && !dialog.open) dialog.showModal();
     if (!isOpen && dialog.open) dialog.close();
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return undefined;
+    if (!isOpen) return;
+
     const root = document.documentElement;
     const previous = root.style.overflow;
     root.style.overflow = "hidden";
+
     return () => {
       root.style.overflow = previous;
     };
   }, [isOpen]);
 
-  // Design badalne par scroll aur progress bar reset
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
-    if (progressRef.current) progressRef.current.style.transform = "scaleX(0)";
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+
+    if (progressRef.current) {
+      progressRef.current.style.transform = "scaleX(0)";
+    }
+
+    touch.current = null;
   }, [index]);
 
-  // Agle aur pichhle design ko pehle se load kar lo, taaki navigate karte hi turant dikhe
   useEffect(() => {
-    if (index === null) return;
+    if (index === null || images.length === 0) return;
+
     [1, -1].forEach((step) => {
-      const next = images[(index + step + images.length) % images.length];
+      const next =
+        images[(index + step + images.length) % images.length];
+
+      if (!next) return;
+
       const preload = new Image();
       preload.decoding = "async";
       preload.src = next.src;
     });
   }, [index, images]);
 
-  // Scroll progress: state nahi, seedha style (re-render nahi hota, smooth rehta hai)
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     const bar = progressRef.current;
     if (!el || !bar) return;
+
     const max = el.scrollHeight - el.clientHeight;
     const ratio = max > 0 ? el.scrollTop / max : 1;
-    bar.style.transform = `scaleX(${Math.min(1, Math.max(0, ratio)).toFixed(3)})`;
+
+    bar.style.transform = `scaleX(${Math.min(
+      1,
+      Math.max(0, ratio)
+    ).toFixed(3)})`;
   }, []);
 
-  const handleKeyDown = (event) => {
+  const handleKeyDown = (
+    event: KeyboardEvent<HTMLDialogElement>
+  ) => {
     if (event.key === "ArrowRight") {
       event.preventDefault();
       onStep(1);
@@ -448,18 +590,23 @@ function Lightbox({ images, index, onClose, onStep, onSelect }) {
     }
   };
 
-  // Mobile par left/right swipe se next/previous design
-  const handleTouchStart = (event) => {
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
     const t = event.touches[0];
+    if (!t) return;
+
     touch.current = { x: t.clientX, y: t.clientY };
   };
 
-  const handleTouchEnd = (event) => {
-    if (!touch.current) return;
-    const t = event.changedTouches[0];
-    const dx = t.clientX - touch.current.x;
-    const dy = t.clientY - touch.current.y;
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const start = touch.current;
     touch.current = null;
+
+    const t = event.changedTouches[0];
+    if (!start || !t) return;
+
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       onStep(dx < 0 ? 1 : -1);
     }
@@ -468,7 +615,7 @@ function Lightbox({ images, index, onClose, onStep, onSelect }) {
   return (
     <dialog
       ref={dialogRef}
-      aria-label="Landing page preview"
+      aria-label="Portfolio project preview"
       onClose={onClose}
       onKeyDown={handleKeyDown}
       onClick={(event) => {
@@ -479,16 +626,18 @@ function Lightbox({ images, index, onClose, onStep, onSelect }) {
         "place-items-center border-0 bg-transparent",
         "p-3 text-white sm:p-5 md:p-[clamp(12px,3vw,40px)]",
         "open:grid open:animate-[cc-fade_250ms_ease_both]",
-        // backdrop-blur hata diya: bade images ke upar blur bahut lag karta hai
         "backdrop:animate-[cc-fade_300ms_ease_both]",
         "backdrop:[background:radial-gradient(ellipse_at_50%_20%,rgba(225,29,46,0.3),transparent_70%),rgba(4,2,3,0.95)]",
         "motion-reduce:open:animate-none motion-reduce:backdrop:animate-none"
       )}
     >
-      {item && (
+      {item && index !== null && (
         <div
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
+          onTouchCancel={() => {
+            touch.current = null;
+          }}
           className="grid max-h-[94dvh] w-[min(1080px,100%)] animate-[cc-pop_450ms_cubic-bezier(0.22,1,0.36,1)_both] gap-2.5 rounded-[20px] border border-white/15 bg-[linear-gradient(150deg,#1d0c10,#0c0507)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_44px_90px_-30px_rgba(0,0,0,0.9),0_0_90px_-34px_rgba(225,29,46,0.7)] motion-reduce:animate-none sm:p-4 md:gap-3.5 md:rounded-[28px] md:p-[clamp(12px,1.8vw,20px)]"
         >
           <div className="flex items-center justify-between gap-4 px-1">
@@ -509,7 +658,6 @@ function Lightbox({ images, index, onClose, onStep, onSelect }) {
           <div className="overflow-hidden rounded-[16px] bg-black/60 px-2 pb-2.5 pt-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.09)] md:rounded-[18px]">
             <BrowserBar label={item.alt} lit />
 
-            {/* Scroll progress bar */}
             <div className="mx-1 mt-1.5 h-[3px] overflow-hidden rounded-full bg-white/10">
               <div
                 ref={progressRef}
@@ -518,13 +666,12 @@ function Lightbox({ images, index, onClose, onStep, onSelect }) {
               />
             </div>
 
-            {/* Image poori width par, natural height mein; andar scroll karke poora design dekho */}
             <div
               ref={scrollRef}
               onScroll={handleScroll}
               tabIndex={0}
               role="region"
-              aria-label={`${item.alt}. Scroll to explore the full design.`}
+              aria-label={`${item.alt}. Scroll to explore the full project.`}
               className={cx(
                 "relative mt-1.5 overflow-y-auto overflow-x-hidden rounded-xl bg-black/60",
                 "max-h-[62dvh] sm:max-h-[66dvh] md:[max-height:calc(100dvh_-_300px)]",
@@ -553,7 +700,7 @@ function Lightbox({ images, index, onClose, onStep, onSelect }) {
 
             <div
               role="group"
-              aria-label="Choose a design"
+              aria-label="Choose a project"
               className="col-span-full row-start-2 flex items-center justify-self-center md:col-span-1 md:row-start-auto md:justify-self-auto"
             >
               {images.map((image, i) => (
@@ -581,15 +728,16 @@ function Lightbox({ images, index, onClose, onStep, onSelect }) {
               <button
                 type="button"
                 onClick={() => onStep(-1)}
-                aria-label="Previous design"
+                aria-label="Previous project"
                 className={cx(ICON_BUTTON, "hover:-translate-x-[3px]")}
               >
                 <PrevIcon />
               </button>
+
               <button
                 type="button"
                 onClick={() => onStep(1)}
-                aria-label="Next design"
+                aria-label="Next project"
                 className={cx(ICON_BUTTON, "hover:translate-x-[3px]")}
               >
                 <NextIcon />
@@ -605,80 +753,111 @@ function Lightbox({ images, index, onClose, onStep, onSelect }) {
 /* ------------------------------ MAIN ----------------------------- */
 
 export default function ImageCarousel() {
-  const sectionRef = useRef(null);
-  const glowRef = useRef(null);
-  const glowFrame = useRef(0);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const glowRef = useRef<HTMLSpanElement | null>(null);
+  const glowFrame = useRef<number>(0);
 
   const [inView, setInView] = useState(false);
   const [revealed, setRevealed] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(null);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
 
   useEffect(() => {
     const el = sectionRef.current;
-    if (!el) return undefined;
+    if (!el) return;
 
     if (typeof IntersectionObserver === "undefined") {
       setInView(true);
       setRevealed(true);
-      return undefined;
+      return;
     }
 
     const observer = new IntersectionObserver(
-      ([entry]) => {
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+
         setInView(entry.isIntersecting);
-        if (entry.isIntersecting) setRevealed(true);
+
+        if (entry.isIntersecting) {
+          setRevealed(true);
+        }
       },
-      { threshold: 0.12, rootMargin: "80px 0px" }
+      {
+        threshold: 0.12,
+        rootMargin: "80px 0px",
+      }
     );
 
     observer.observe(el);
+
     return () => observer.disconnect();
   }, []);
 
-  // Speed badalne par animation jump nahi karti (playbackRate smooth hai)
   useEffect(() => {
-    const el = sectionRef.current;
-    if (!el || typeof el.getAnimations !== "function") return;
-    el.querySelectorAll(".cc-track").forEach((track) => {
-      track.getAnimations().forEach((animation) => {
-        if (animation.animationName === "cc-scroll") {
-          animation.playbackRate = speed;
-        }
+    const section = sectionRef.current;
+    if (!section) return;
+
+    section
+      .querySelectorAll<HTMLElement>(".cc-track")
+      .forEach((track) => {
+        if (typeof track.getAnimations !== "function") return;
+
+        track.getAnimations().forEach((animation) => {
+          if (
+            "animationName" in animation &&
+            animation.animationName === "cc-scroll"
+          ) {
+            animation.playbackRate = speed;
+          }
+        });
       });
-    });
   }, [speed, revealed]);
 
-  // Cursor glow: sirf transform badalta hai (GPU par chalta hai), mask ya gradient repaint nahi hota
-  const handleSectionMove = useCallback((event) => {
-    if (event.pointerType !== "mouse") return;
-    const section = sectionRef.current;
-    const glow = glowRef.current;
-    if (!section || !glow) return;
+  const handleSectionMove = useCallback(
+    (event: PointerEvent<HTMLElement>) => {
+      if (event.pointerType !== "mouse") return;
 
-    const { clientX, clientY } = event;
-    cancelAnimationFrame(glowFrame.current);
+      const section = sectionRef.current;
+      const glow = glowRef.current;
 
-    glowFrame.current = requestAnimationFrame(() => {
-      const rect = section.getBoundingClientRect();
-      glow.style.transform = `translate3d(${(clientX - rect.left).toFixed(0)}px, ${(
-        clientY - rect.top
-      ).toFixed(0)}px, 0)`;
-    });
+      if (!section || !glow) return;
+
+      const { clientX, clientY } = event;
+      cancelAnimationFrame(glowFrame.current);
+
+      glowFrame.current = requestAnimationFrame(() => {
+        const rect = section.getBoundingClientRect();
+
+        glow.style.transform = `translate3d(${(
+          clientX - rect.left
+        ).toFixed(0)}px, ${(clientY - rect.top).toFixed(0)}px, 0)`;
+      });
+    },
+    []
+  );
+
+  useEffect(() => {
+    return () => cancelAnimationFrame(glowFrame.current);
   }, []);
 
-  useEffect(() => () => cancelAnimationFrame(glowFrame.current), []);
+  const closePreview = useCallback(() => {
+    setActiveIndex(null);
+  }, []);
 
-  const closePreview = useCallback(() => setActiveIndex(null), []);
-
-  const stepPreview = useCallback((direction) => {
+  const stepPreview = useCallback((direction: number) => {
     setActiveIndex((current) =>
-      current === null ? current : (current + direction + allImages.length) % allImages.length
+      current === null
+        ? null
+        : (current + direction + allImages.length) % allImages.length
     );
   }, []);
 
-  const stagger = (i) => ({ transitionDelay: `${i * 110}ms` });
+  const stagger = (i: number): CSSProperties => ({
+    transitionDelay: `${i * 110}ms`,
+  });
+
   const bgPause = inView ? "" : "[animation-play-state:paused]";
 
   return (
@@ -693,12 +872,11 @@ export default function ImageCarousel() {
         "[background:radial-gradient(ellipse_60%_50%_at_0%_0%,rgba(225,29,46,0.24),transparent_65%),radial-gradient(ellipse_55%_45%_at_100%_100%,rgba(255,45,65,0.2),transparent_70%),linear-gradient(165deg,#050506_0%,#12070a_45%,#2a0a10_100%)]"
       )}
     >
-      {/* BACKGROUND (sab kuch GPU-friendly: static gradients + transform/opacity animation) */}
+      {/* BACKGROUND */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
       >
-        {/* drifting red orbs: radial-gradient hain, blur filter nahi */}
         <span
           className={cx(
             "absolute -bottom-[180px] right-[2%] h-[560px] w-[560px] rounded-full will-change-transform",
@@ -707,6 +885,7 @@ export default function ImageCarousel() {
             bgPause
           )}
         />
+
         <span
           className={cx(
             "absolute -left-[160px] top-[22%] h-[520px] w-[520px] rounded-full will-change-transform",
@@ -716,16 +895,13 @@ export default function ImageCarousel() {
           )}
         />
 
-        {/* static grid */}
         <span className="absolute inset-0 [-webkit-mask-image:linear-gradient(to_bottom,#000,transparent_85%)] [background-image:linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:linear-gradient(to_bottom,#000,transparent_85%)]" />
 
-        {/* cursor glow */}
         <span
           ref={glowRef}
           className="absolute -left-[260px] -top-[260px] h-[520px] w-[520px] rounded-full opacity-0 transition-opacity duration-500 will-change-transform group-hover/sec:opacity-100 [background:radial-gradient(circle,rgba(225,29,46,0.26),transparent_65%)] motion-reduce:hidden"
         />
 
-        {/* rising embers */}
         {EMBERS.map((ember, i) => (
           <span
             key={i}
@@ -744,12 +920,11 @@ export default function ImageCarousel() {
           />
         ))}
 
-        {/* top and bottom black fades */}
         <span className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 to-transparent" />
         <span className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/70 to-transparent" />
       </div>
 
-      {/* HEADER */}
+      {/* PORTFOLIO HEADER */}
       <header className="mx-auto mb-8 grid w-full max-w-[1280px] grid-cols-1 items-end gap-6 px-5 sm:mb-10 sm:px-7 md:mb-12 md:px-9 lg:mb-14 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-x-14 lg:px-12 xl:gap-x-20">
         <div className="min-w-0 [container-type:inline-size]">
           <span
@@ -762,7 +937,7 @@ export default function ImageCarousel() {
               reveal(revealed)
             )}
           >
-            Our Creative Work
+            My Selected Work
           </span>
 
           <h2
@@ -770,27 +945,30 @@ export default function ImageCarousel() {
             style={stagger(1)}
             className={cx(
               "m-0 font-bold leading-[0.98] tracking-[-0.04em] text-white",
-              "[font-size:clamp(30px,min(10.4cqw,76px),76px)]",
+              "[font-size:clamp(26px,min(10.4cqw,76px),76px)]",
               "[font-variation-settings:'opsz'_96]",
               reveal(revealed)
             )}
           >
-            <span className="block max-w-full whitespace-nowrap">Landing Pages That</span>
+            <span className="block max-w-full whitespace-nowrap">
+              Websites Designed To
+            </span>{" "}
 
             <span
               className={cx(
                 "mt-[0.08em] block max-w-full whitespace-nowrap pb-[0.1em]",
                 "font-normal italic leading-[1.04] tracking-[-0.01em]",
                 FONT_ACCENT,
-                "[font-size:min(7.6cqw,0.74em)]",
+                "[font-size:min(9.4cqw,0.9em)]",
                 "bg-clip-text text-transparent",
                 "bg-[linear-gradient(100deg,#c4121f_0%,#ff4d5e_32%,#ffd9dd_50%,#ff4d5e_68%,#c4121f_100%)]",
                 "[background-position:100%_0] [background-size:220%_100%]",
-                revealed && "animate-[cc-shimmer_2.8s_cubic-bezier(0.22,1,0.36,1)_0.6s_both]",
+                revealed &&
+                  "animate-[cc-shimmer_2.8s_cubic-bezier(0.22,1,0.36,1)_0.6s_both]",
                 "motion-reduce:animate-none"
               )}
             >
-              Turn Interest Into Enquiries.
+              Turn Ideas Into Impact.
             </span>
           </h2>
         </div>
@@ -814,8 +992,9 @@ export default function ImageCarousel() {
               reveal(revealed)
             )}
           >
-            Stop Wasting Ad Spend on Low Conversion Pages. Invest in a High-Converting
-            Automated Funnel.
+            Explore My Work Across Landing Pages, Business Websites, And
+            React Applications—Built With Clean Design, Smooth
+            Interactions, And A Focus On Results.
           </p>
         </div>
       </header>
@@ -823,13 +1002,13 @@ export default function ImageCarousel() {
       {/* CONTROLS */}
       <Controls
         playing={playing}
-        onToggle={() => setPlaying((p) => !p)}
+        onToggle={() => setPlaying((current) => !current)}
         speed={speed}
         onSpeed={setSpeed}
         revealed={revealed}
       />
 
-      {/* CAROUSEL */}
+      {/* PROJECT GALLERY */}
       <div className="grid w-full min-w-0 gap-1 sm:gap-2 lg:gap-1">
         <CarouselRow
           images={topImages}
@@ -838,6 +1017,7 @@ export default function ImageCarousel() {
           paused={!inView || !playing}
           onOpen={setActiveIndex}
         />
+
         <CarouselRow
           images={bottomImages}
           offset={topImages.length}
@@ -848,7 +1028,7 @@ export default function ImageCarousel() {
         />
       </div>
 
-      {/* LIGHTBOX */}
+      {/* PROJECT PREVIEW */}
       <Lightbox
         images={allImages}
         index={activeIndex}
@@ -857,23 +1037,99 @@ export default function ImageCarousel() {
         onSelect={setActiveIndex}
       />
 
-      {/* FONTS + KEYFRAMES */}
+      {/* FONTS + ANIMATIONS */}
       <style>{`
         @import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&family=Instrument+Serif:ital@1&display=swap");
 
-        @keyframes cc-scroll { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
-        @keyframes cc-float { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-60px,-40px,0) scale(1.12); } }
-        @keyframes cc-float-2 { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(90px,50px,0) scale(1.15); } }
-        @keyframes cc-ember {
-          0% { transform: translate3d(0,0,0) scale(1); opacity: 0; }
-          10% { opacity: .9; }
-          100% { transform: translate3d(36px,-80vh,0) scale(.3); opacity: 0; }
+        @keyframes cc-scroll {
+          from {
+            transform: translate3d(0, 0, 0);
+          }
+          to {
+            transform: translate3d(-50%, 0, 0);
+          }
         }
-        @keyframes cc-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.7); } }
-        @keyframes cc-shimmer { from { background-position: 100% 0; } to { background-position: 0% 0; } }
-        @keyframes cc-fade { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes cc-pop { from { opacity: 0; transform: translateY(18px) scale(0.96); } to { opacity: 1; transform: none; } }
-        @keyframes cc-swap { from { opacity: 0; } to { opacity: 1; } }
+
+        @keyframes cc-float {
+          from {
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+          to {
+            transform: translate3d(-60px, -40px, 0) scale(1.12);
+          }
+        }
+
+        @keyframes cc-float-2 {
+          from {
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+          to {
+            transform: translate3d(90px, 50px, 0) scale(1.15);
+          }
+        }
+
+        @keyframes cc-ember {
+          0% {
+            transform: translate3d(0, 0, 0) scale(1);
+            opacity: 0;
+          }
+          10% {
+            opacity: 0.9;
+          }
+          100% {
+            transform: translate3d(36px, -80vh, 0) scale(0.3);
+            opacity: 0;
+          }
+        }
+
+        @keyframes cc-pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.4;
+            transform: scale(0.7);
+          }
+        }
+
+        @keyframes cc-shimmer {
+          from {
+            background-position: 100% 0;
+          }
+          to {
+            background-position: 0% 0;
+          }
+        }
+
+        @keyframes cc-fade {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes cc-pop {
+          from {
+            opacity: 0;
+            transform: translateY(18px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: none;
+          }
+        }
+
+        @keyframes cc-swap {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
       `}</style>
     </section>
   );
