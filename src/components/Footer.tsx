@@ -1,9 +1,11 @@
-import type { SVGProps } from "react";
+import type { CSSProperties, SVGProps } from "react";
 import { ArrowUp, Github, Instagram, Linkedin, Mail } from "lucide-react";
 import { navLinks, profile } from "@/data/portfolio";
 
-/* lucide-react me WhatsApp icon nahi hota, isliye chhota custom SVG icon */
-function WhatsAppIcon({ size = 18, ...props }: { size?: number } & SVGProps<SVGSVGElement>) {
+function WhatsAppIcon({
+  size = 22,
+  ...props
+}: { size?: number } & SVGProps<SVGSVGElement>) {
   return (
     <svg
       width={size}
@@ -18,69 +20,438 @@ function WhatsAppIcon({ size = 18, ...props }: { size?: number } & SVGProps<SVGS
   );
 }
 
-/* WhatsApp: country code (India = 91) + number. Chat me ye message pehle se likha aayega. */
 const WHATSAPP_NUMBER = "919773768835";
-const WHATSAPP_TEXT = "Hi! I found your portfolio and would like to connect.";
+const WHATSAPP_TEXT =
+  "Hi! I found your portfolio and would like to connect.";
 const INSTAGRAM_URL = "https://www.instagram.com/cod3xdesigner/";
 
 export default function Footer() {
   const social = [
-    { href: profile.github, label: "GitHub", Icon: Github },
-    { href: profile.linkedin, label: "LinkedIn", Icon: Linkedin },
     {
-      href: `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_TEXT)}`,
+      href: profile.github,
+      label: "GitHub",
+      Icon: Github,
+      color: "#ffffff",
+      glow: "rgba(255,255,255,.18)",
+      background: "linear-gradient(145deg,#414149,#18181e)",
+      rotation: "-12deg",
+    },
+    {
+      href: profile.linkedin,
+      label: "LinkedIn",
+      Icon: Linkedin,
+      color: "#62baff",
+      glow: "rgba(10,102,194,.4)",
+      background: "linear-gradient(145deg,#1689e6,#074b91)",
+      rotation: "10deg",
+    },
+    {
+      href: `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+        WHATSAPP_TEXT
+      )}`,
       label: "WhatsApp",
       Icon: WhatsAppIcon,
+      color: "#4ade80",
+      glow: "rgba(37,211,102,.35)",
+      background: "linear-gradient(145deg,#35e77c,#119749)",
+      rotation: "-10deg",
     },
-    { href: INSTAGRAM_URL, label: "Instagram", Icon: Instagram },
-    { href: `mailto:${profile.email}`, label: "Email", Icon: Mail },
+    {
+      href: INSTAGRAM_URL,
+      label: "Instagram",
+      Icon: Instagram,
+      color: "#ff88c2",
+      glow: "rgba(225,48,108,.4)",
+      background:
+        "radial-gradient(circle at 25% 105%,#ffdc80 0%,#fcaf45 22%,#f77737 36%,#e1306c 58%,#c13584 73%,#833ab4 100%)",
+      rotation: "12deg",
+    },
+    {
+      href: `mailto:${profile.email}`,
+      label: "Email",
+      Icon: Mail,
+      color: "#ff858e",
+      glow: "rgba(244,63,94,.3)",
+      background: "linear-gradient(145deg,#fb7185,#be123c)",
+      rotation: "-9deg",
+    },
   ];
 
   return (
-    <footer className="border-t border-white/10 bg-coal">
-      <div className="container-x flex flex-col gap-10 py-14 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="font-display text-3xl italic">
-            Neeraj<span className="text-crimson-glow">.</span>
-          </p>
-          <p className="mt-2 max-w-xs text-sm text-bone/55">
+    <footer className="nf-footer border-t border-white/10 bg-coal">
+      <style>{`
+        .nf-footer {
+          position: relative;
+          isolation: isolate;
+          color: #f4f0e9;
+          background-image:
+            radial-gradient(
+              ellipse at 5% 0%,
+              rgba(225, 29, 72, .065),
+              transparent 50%
+            );
+        }
+
+        .nf-footer *,
+        .nf-footer *::before,
+        .nf-footer *::after {
+          box-sizing: border-box;
+        }
+
+        .nf-layout {
+          display: grid;
+          grid-template-columns: minmax(0, .9fr) minmax(0, 1.3fr);
+          align-items: center;
+          gap: 32px 48px;
+          padding-top: 48px;
+          padding-bottom: 38px;
+        }
+
+        .nf-brand {
+          min-width: 0;
+        }
+
+        .nf-logo {
+          display: inline-block;
+          text-decoration: none;
+          color: inherit;
+        }
+
+        .nf-description {
+          max-width: 340px;
+          margin: 10px 0 0;
+          font-size: 13px;
+          line-height: 1.8;
+          color: rgba(244, 240, 233, .5);
+          overflow-wrap: anywhere;
+        }
+
+        .nf-socials {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 8px 18px;
+          min-width: 0;
+        }
+
+        .nf-social {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 94px;
+          padding: 54px 5px 12px;
+          color: rgba(244, 240, 233, .7);
+          text-decoration: none;
+          -webkit-tap-highlight-color: transparent;
+          outline-offset: 5px;
+        }
+
+        .nf-social:focus-visible,
+        .nf-top:focus-visible,
+        .nf-nav a:focus-visible,
+        .nf-logo:focus-visible {
+          outline: 2px solid #fb7185;
+          border-radius: 8px;
+        }
+
+        .nf-social-label {
+          position: relative;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: .01em;
+          white-space: nowrap;
+          transition: color .25s ease;
+        }
+
+        .nf-social-label::after {
+          content: "";
+          position: absolute;
+          right: 0;
+          bottom: -7px;
+          left: 0;
+          height: 2px;
+          border-radius: 20px;
+          background: var(--social-color);
+          transform: scaleX(0);
+          transition: transform .3s ease;
+        }
+
+        .nf-social-icon {
+          position: absolute;
+          top: 4px;
+          left: 50%;
+          display: grid;
+          width: 39px;
+          height: 39px;
+          place-items: center;
+          border: 1px solid rgba(255, 255, 255, .2);
+          border-radius: 12px;
+          color: #fff;
+          background: var(--social-bg);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, .25),
+            0 9px 22px var(--social-glow);
+          opacity: 0;
+          transform:
+            translate(-50%, 17px)
+            rotate(0deg)
+            scale(.55);
+          transition:
+            transform .45s cubic-bezier(.2, .8, .2, 1.35),
+            opacity .25s ease,
+            box-shadow .3s ease;
+          pointer-events: none;
+        }
+
+        .nf-social-icon svg {
+          width: 22px;
+          height: 22px;
+        }
+
+        .nf-social:hover .nf-social-icon,
+        .nf-social:focus-visible .nf-social-icon {
+          opacity: 1;
+          transform:
+            translate(-50%, 0)
+            rotate(var(--social-rotation))
+            scale(1);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, .3),
+            0 12px 28px var(--social-glow);
+        }
+
+        .nf-social:hover .nf-social-label,
+        .nf-social:focus-visible .nf-social-label {
+          color: var(--social-color);
+        }
+
+        .nf-social:hover .nf-social-label::after,
+        .nf-social:focus-visible .nf-social-label::after {
+          transform: scaleX(1);
+        }
+
+        .nf-top {
+          display: grid;
+          flex-shrink: 0;
+          width: 42px;
+          height: 42px;
+          margin-left: 4px;
+          place-items: center;
+          border: 1px solid rgba(255, 255, 255, .15);
+          border-radius: 50%;
+          color: #fff;
+          background: linear-gradient(145deg, #ef3455, #b81135);
+          box-shadow: 0 6px 20px rgba(225, 29, 72, .15);
+          transition: transform .25s ease, box-shadow .25s ease;
+        }
+
+        .nf-top:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 26px rgba(225, 29, 72, .3);
+        }
+
+        .nf-nav {
+          grid-column: 1 / -1;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px 28px;
+          padding-top: 24px;
+          border-top: 1px solid rgba(255, 255, 255, .07);
+        }
+
+        .nf-nav a {
+          padding: 6px 0;
+          color: rgba(244, 240, 233, .52);
+          font-size: 13px;
+          text-decoration: none;
+          transition: color .2s ease;
+        }
+
+        .nf-nav a:hover {
+          color: #fff;
+        }
+
+        .nf-copyright {
+          margin: 0;
+          padding: 20px;
+          border-top: 1px solid rgba(255, 255, 255, .06);
+          color: rgba(244, 240, 233, .36);
+          font-size: 11px;
+          line-height: 1.8;
+          text-align: center;
+          overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 1024px) {
+          .nf-layout {
+            grid-template-columns: 1fr;
+            gap: 22px;
+          }
+
+          .nf-socials {
+            justify-content: flex-start;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .nf-layout {
+            padding-top: 34px;
+            padding-bottom: 26px;
+            gap: 24px;
+          }
+
+          .nf-socials {
+            gap: 8px 12px;
+          }
+
+          .nf-social {
+            min-height: 86px;
+            padding: 49px 3px 11px;
+          }
+
+          .nf-social-label {
+            font-size: 11px;
+          }
+
+          .nf-social-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 11px;
+            opacity: 1;
+            transform: translate(-50%, 0) rotate(0deg) scale(1);
+          }
+
+          .nf-social-icon svg {
+            width: 20px;
+            height: 20px;
+          }
+
+          .nf-top {
+            width: 36px;
+            height: 36px;
+            margin-left: 0;
+          }
+
+          .nf-nav {
+            gap: 8px 22px;
+            padding-top: 18px;
+          }
+
+          .nf-nav a {
+            font-size: 12px;
+          }
+
+          .nf-copyright {
+            padding: 18px 20px;
+            font-size: 10px;
+          }
+        }
+
+        @media (hover: none) {
+          .nf-social-icon {
+            opacity: 1;
+            transform: translate(-50%, 0) rotate(0deg) scale(1);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .nf-footer *,
+          .nf-footer *::before,
+          .nf-footer *::after {
+            transition: none !important;
+            animation: none !important;
+          }
+
+          .nf-social-icon {
+            opacity: 1;
+            transform: translate(-50%, 0) scale(1);
+          }
+
+          .nf-social:hover .nf-social-icon,
+          .nf-social:focus-visible .nf-social-icon {
+            transform: translate(-50%, 0) scale(1);
+          }
+
+          .nf-top:hover {
+            transform: none;
+          }
+        }
+      `}</style>
+
+      <div className="container-x nf-layout">
+        <div className="nf-brand">
+          <a href="#home" className="nf-logo" aria-label="Neeraj home">
+            <span className="font-display text-3xl italic">
+              Neeraj<span className="text-crimson-glow">.</span>
+            </span>
+          </a>
+
+          <p className="nf-description">
             {profile.role} · {profile.stack}
           </p>
         </div>
 
-        <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-bone/65">
-          {navLinks.map((l) => (
-            <a key={l.href} href={l.href} className="hover:text-white">
-              {l.label}
+        <nav className="nf-socials" aria-label="Social media">
+          {social.map(
+            ({
+              href,
+              label,
+              Icon,
+              color,
+              glow,
+              background,
+              rotation,
+            }) => {
+              const isExternal = /^https?:\/\//i.test(href);
+
+              const style = {
+                "--social-color": color,
+                "--social-glow": glow,
+                "--social-bg": background,
+                "--social-rotation": rotation,
+              } as CSSProperties;
+
+              return (
+                <a
+                  key={label}
+                  href={href}
+                  target={isExternal ? "_blank" : undefined}
+                  rel={isExternal ? "noopener noreferrer" : undefined}
+                  aria-label={
+                    isExternal ? `${label} (opens in a new tab)` : label
+                  }
+                  className="nf-social"
+                  style={style}
+                >
+                  <span className="nf-social-icon" aria-hidden="true">
+                    <Icon size={22} />
+                  </span>
+
+                  <span className="nf-social-label">{label}</span>
+                </a>
+              );
+            }
+          )}
+
+          <a href="#home" aria-label="Back to top" className="nf-top">
+            <ArrowUp size={18} aria-hidden="true" />
+          </a>
+        </nav>
+
+        <nav aria-label="Footer navigation" className="nf-nav">
+          {navLinks.map((link) => (
+            <a key={link.href} href={link.href}>
+              {link.label}
             </a>
           ))}
         </nav>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {social.map(({ href, label, Icon }) => (
-            <a
-              key={label}
-              href={href}
-              target={href.startsWith("http") ? "_blank" : undefined}
-              rel="noopener noreferrer"
-              aria-label={label}
-              className="grid h-11 w-11 place-items-center rounded-full border border-white/10 transition-colors hover:border-crimson-glow hover:text-crimson-glow"
-            >
-              <Icon size={18} />
-            </a>
-          ))}
-          <a
-            href="#home"
-            aria-label="Back to top"
-            className="grid h-11 w-11 place-items-center rounded-full bg-crimson text-white transition-colors hover:bg-crimson-glow"
-          >
-            <ArrowUp size={18} />
-          </a>
-        </div>
       </div>
 
-      <p className="border-t border-white/5 py-5 text-center text-xs text-bone/40">
-        © {new Date().getFullYear()} {profile.name}. Built with React, Vite and Tailwind CSS.
+      <p className="nf-copyright">
+        © {new Date().getFullYear()} {profile.name}. Built with React, Vite
+        and Tailwind CSS.
       </p>
     </footer>
   );
